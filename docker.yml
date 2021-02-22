@@ -31,8 +31,8 @@
             var: yum
 
       - name: "Install docker-ce package"
-        shell: "dnf install docker-ce --nobest -y"
-        when: ( checkd.rc != 0 or checkd.failed == "false" ) and ( yum.state == "present" )
+        shell: "{{ ansible_pkg_mgr }} install docker-ce --nobest -y"
+        when: ( checkd.rc != 0 or checkd.failed == true ) and ( yum.state == "present" )
         register: installdocker
         #ignore_errors: yes
 
@@ -84,7 +84,8 @@
               dest: "{{ webpath }}"
         register: copywebpages
       
-      - debug:
+      - name: "Debug Copy web pages"  
+        debug:
             var: copywebpages
 
       - name: "Launch Docker Container"
