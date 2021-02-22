@@ -1,0 +1,101 @@
+- name: "Configure Docker"
+  hosts: docker
+  gather_facts: no
+  vars:
+     - image: "httpd"
+     - webpages: "/root/ansible/docker/index.html"   
+     - webpath: "/root/web/"
+  tasks:
+      - name: "Check Docker package Installed or Not"
+        shell: "rpm -q docker-ce"
+        register: checkd
+        ignore_errors: yes
+      
+      - name: "Debug check docker package"
+        debug:
+            var: checkd
+
+      - name: "configure yum for docker-ce"
+        yum_repository:
+                name: Docker
+                description: Repository for Installing Docker-ce package
+                file: docker
+                baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+                gpgcheck: no
+        when: ( checkd.failed == true or checkd.rc != 0 )
+        register: yum
+        ignore_errors: yes
+
+      - name: "Debug yum configuration"
+        debug:
+            var: yum
+
+      - name: "Install docker-ce package"
+        shell: "dnf install docker-ce --nobest -y"
+        when: ( checkd.rc != 0 or checkd.failed == "false" ) and ( yum.state == "present" )
+        register: installdocker
+        #ignore_errors: yes
+
+      - name: "Debug Install Docker"
+        debug:
+            var: installdocker
+
+      - name: "start Docker services"
+        service:
+              name: docker
+              state: started
+        register: srvc
+
+      - name: "Debug Docker Service"          
+        debug:
+            var: srvc.changed
+
+      - name: "Check Docker python Library is Installed or Not"  
+        shell: "pip3 list | grep docker"
+        register: dockerLibrary
+        ignore_errors: yes
+
+      - name: "Debug docker Library"  
+        debug:
+                var: dockerLibrary
+
+      - name: "Install docker library"
+        shell: "pip3 install docker"
+        when: dockerLibrary.rc != 0 or dockerLibrary.failed == true
+
+      - name: "Pull Docker Images"
+        docker_image:
+                name: "{{ image }}"
+                source: pull
+
+      - name: "Create Directory to copy web pages"
+        file:
+           path: "{{ webpath }}"
+           state: directory
+        register: mkdir
+
+      - name: "Debug create Directory"  
+        debug:
+                var: mkdir
+
+      - name: "Copy Web Pages"
+        template:
+              src: "{{ webpages }}"
+              dest: "{{ webpath }}"
+        register: copywebpages
+      
+      - debug:
+            var: copywebpages
+
+      - name: "Launch Docker Container"
+        docker_container:
+               name: ansibleWebContainer
+               image: "{{ image }}"
+               state: started
+               exposed_ports: "80"
+               ports: "8080:80"
+               volumes: "{{ webpath }}:/usr/local/apache2/htdocs/"
+               network_mode: bridge
+               restart: yes
+               restart_policy: always
+        when: mkdir.failed == false and copywebpages.failed == false
