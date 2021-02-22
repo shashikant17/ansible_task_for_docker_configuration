@@ -1,9 +1,9 @@
 - name: "Configure Docker"
   hosts: docker
-  gather_facts: no
+  gather_facts: yes
   vars:
      - image: "httpd"
-     - webpages: "/root/ansible/docker/index.html"   
+     - webpages: "index.html"
      - webpath: "/root/web/"
   tasks:
       - name: "Check Docker package Installed or Not"
