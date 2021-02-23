@@ -59,9 +59,22 @@
         debug:
                 var: dockerLibrary
 
-      - name: "Install docker library"
-        shell: "pip3 install docker"
+      - name: "Install python36 package"
+        package:
+             name: python36
+             state: present
+        register: ipython
         when: dockerLibrary.rc != 0 or dockerLibrary.failed == true
+
+      - name: "Debug python36 package"
+        debug:
+                var: ipython
+
+      - name: "Install docker library"
+        #shell: "pip3 install docker"
+        pip:
+            name: "docker"
+        when: ( dockerLibrary.rc != 0 or dockerLibrary.failed == true ) and ipython.rc == 0
 
       - name: "Pull Docker Images"
         docker_image:
